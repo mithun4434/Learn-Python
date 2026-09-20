@@ -1,4 +1,4 @@
-# Python // The Journey
+# PyLogic
 
 Interactive Python learning experience built with React, Vite, TypeScript, Framer Motion and Lucide React. The curriculum is based on the supplied Python Programming course material.
 
