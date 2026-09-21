@@ -79,8 +79,7 @@ button, a { -webkit-tap-highlight-color:transparent; }
 .landing-foot { display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:14px; border-top:1px solid var(--line); color:var(--muted); font:500 9px 'DM Mono',monospace; }
 
 /* Customizer */
-.customizer { position:relative; z-index:100; }
-.landing > .customizer { position:relative; }
+.customizer { position:fixed; top:12px; right:18px; z-index:120; }
 .customizer-launch { display:flex; align-items:center; gap:7px; border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:8px 10px; box-shadow:0 8px 22px rgba(35,31,24,.06); cursor:pointer; font:500 8px 'DM Mono',monospace; letter-spacing:.09em; }
 .customizer-panel { position:absolute; right:0; top:42px; width:min(390px, calc(100vw - 26px)); padding:15px; border:1px solid var(--line); background:var(--surface); border-radius:18px; box-shadow:0 25px 65px rgba(24,26,28,.16); backdrop-filter:blur(18px); }
 .customizer-title { display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--line); font:500 9px 'DM Mono',monospace; color:var(--muted); letter-spacing:.12em; }
@@ -341,7 +340,7 @@ button, a { -webkit-tap-highlight-color:transparent; }
   .hero-code pre { min-height:210px; font-size:10px; }
   .course-bar { min-height:54px; padding:0 5vw; }
   .course-mode { display:none; }
-  .bar-actions .customizer-launch span { display:none; }
+  .customizer-launch span { display:inline; }
   .topic-screen { padding-top:65px; padding-bottom:78px; }
   .topic-copy h2 { font-size:clamp(3.3rem,15vw,5.5rem); }
   .exact-text { max-height:380px; font-size:calc(10px * var(--ui-scale)); }
@@ -359,7 +358,37 @@ button, a { -webkit-tap-highlight-color:transparent; }
   .landing-foot { justify-content:flex-end; }
 }
 
+
+/* Interaction motion: reliable CSS fallbacks complement Framer Motion so hover feedback
+   still works on deployments where JS animation frames are delayed. */
+button, a { -webkit-tap-highlight-color: transparent; }
+.customizer-launch,
+.switch-btn,
+.course-brand,
+.theme-choice,
+.concept-chip,
+.rail-items button,
+.visual-stage button,
+.activity-actions button,
+.complete-actions button,
+.level-card { transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease, background-color .22s ease; }
+.customizer-launch:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.12); }
+.theme-choice:hover,
+.concept-chip:hover,
+.visual-stage button:hover,
+.activity-actions button:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 8px 22px rgba(0,0,0,.07); }
+.switch-btn:hover,
+.course-brand:hover { transform: translateY(-1px); color: var(--accent); }
+.level-card:hover { transform: translateY(-6px); box-shadow: 0 22px 50px rgba(0,0,0,.12); }
+.rail-items button:not(:disabled):hover { transform: translateX(-3px); color: var(--ink); }
+.topic-screen { position:relative; }
+.unlock-banner { position:fixed; top:74px; left:50%; transform:translateX(-50%); z-index:110; display:flex; align-items:center; gap:7px; padding:9px 13px; border:1px solid var(--accent); border-radius:999px; background:color-mix(in srgb,var(--surface) 92%,transparent); color:var(--accent); box-shadow:0 16px 40px rgba(0,0,0,.14); font:600 9px 'DM Mono',monospace; letter-spacing:.08em; pointer-events:none; }
+.topic-screen.just-unlocked .topic-layout { animation: unlockRise .8s ease both; }
+@keyframes unlockRise { 0% { opacity:.7; transform:translateY(16px) scale(.985); } 55% { opacity:1; transform:translateY(-4px) scale(1.01); } 100% { opacity:1; transform:translateY(0) scale(1); } }
+@media (max-width:700px) { .customizer { top:10px; right:10px; } .customizer-panel { right:0; } .unlock-banner { top:62px; font-size:8px; } }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior:auto; }
-  *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+  /* Keep explicit UI hover feedback available; only disable smooth scrolling. */
+  * { scroll-behavior:auto !important; }
 }

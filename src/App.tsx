@@ -119,7 +119,7 @@ function LevelPicker({ onPick, theme, scale, onTheme, onScale }: { onPick: (leve
       <div className="ambient orb-a" /><div className="ambient orb-b" /><div className="landing-grid" />
       <ThemeDock theme={theme} scale={scale} onTheme={onTheme} onScale={onScale} />
       <div className="landing-shell">
-        <div className="brandline"><span>PYTHON // THE JOURNEY</span><span>6 UNITS • 15 TOPICS • 3 LEARNING PATHS</span><div className="home-appearance"><ThemeDock theme={theme} scale={scale} onTheme={onTheme} onScale={onScale}/></div></div>
+        <div className="brandline"><span>PYTHON // THE JOURNEY</span><span>6 UNITS • 15 TOPICS • 3 LEARNING PATHS</span></div>
         <div className="hero-layout">
           <motion.div className="landing-copy" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduce ? 0 : 0.65 }}>
             <p className="kicker"><Sparkles size={14}/> INTERACTIVE PYTHON COURSE</p>
@@ -440,10 +440,11 @@ function ActivityGate({ topic, level, complete, onComplete }: { topic: Topic; le
   );
 }
 
-function TopicSection({ topic, index, level, unlocked, completed, onComplete, onNext }: { topic: Topic; index: number; level: Level; unlocked: boolean; completed: boolean; onComplete: () => void; onNext: () => void }) {
+function TopicSection({ topic, index, level, unlocked, completed, justUnlocked, onComplete, onNext }: { topic: Topic; index: number; level: Level; unlocked: boolean; completed: boolean; justUnlocked: boolean; onComplete: () => void; onNext: () => void }) {
   return (
-    <section id={`topic-${topic.id}`} className={`topic-screen ${unlocked ? '' : 'locked-screen'}`}>
-      {!unlocked && <div className="topic-lock"><Lock size={30}/><strong>TOPIC LOCKED</strong><span>Complete the previous coding checkpoint to enter this topic.</span></div>}
+    <motion.section id={`topic-${topic.id}`} className={`topic-screen ${unlocked ? '' : 'locked-screen'}`} animate={justUnlocked ? { opacity: [0.8, 1, 1], scale: [0.985, 1.015, 1] } : { opacity: 1, scale: 1 }} transition={{ duration: justUnlocked ? 0.8 : 0.35, ease: 'easeOut' }}>
+      <AnimatePresence>{!unlocked && <motion.div className="topic-lock" initial={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.08, backdropFilter: 'blur(0px)' }} transition={{ duration: 0.55 }}><Lock size={30}/><strong>TOPIC LOCKED</strong><span>Complete the previous coding checkpoint to enter this topic.</span></motion.div>}</AnimatePresence>
+      {justUnlocked && <motion.div className="unlock-banner" initial={{ opacity: 0, y: -18, scale: 0.92 }} animate={{ opacity: [0,1,1,0], y: [-18,0,0,-8], scale: [0.92,1,1,0.98] }} transition={{ duration: 1.5, times: [0,.18,.72,1] }}><Sparkles size={16}/> TOPIC UNLOCKED <Check size={15}/></motion.div>}
       <div className="topic-shell">
         <div className="topic-header"><span>{topic.unit}</span><span>{topic.number} / 15</span></div>
         <motion.div className="topic-layout" initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.15 }} transition={{ duration: 0.65 }}>
@@ -463,7 +464,7 @@ function TopicSection({ topic, index, level, unlocked, completed, onComplete, on
           </div>
         </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -479,6 +480,7 @@ function App() {
   const [level, setLevel] = useState<Level | null>(null);
   const [active, setActive] = useState(0);
   const [completed, setCompleted] = useState<boolean[]>(Array(15).fill(false));
+  const [unlockingIndex, setUnlockingIndex] = useState<number | null>(null);
   const [theme, setTheme] = useState<ThemeName>(() => (localStorage.getItem('python-journey-theme') as ThemeName) || 'paper');
   const [scale, setScale] = useState(() => Number(localStorage.getItem('python-journey-scale') || '1'));
   const topics = useMemo(() => level ? topicsByLevel[level] : [], [level]);
@@ -506,17 +508,27 @@ function App() {
   }, [level, topics, completed]);
 
   const choose = (next: Level) => { setLevel(next); setActive(0); setCompleted(Array(15).fill(false)); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' })); };
-  const completeTopic = (i: number) => setCompleted((prev) => { const next = [...prev]; next[i] = true; if (level) localStorage.setItem(`python-journey-progress-v4-${level}`, JSON.stringify(next)); return next; });
+  const completeTopic = (i: number) => {
+    setCompleted((prev) => { const next = [...prev]; next[i] = true; if (level) localStorage.setItem(`python-journey-progress-v4-${level}`, JSON.stringify(next)); return next; });
+    const nextIndex = i + 1;
+    if (nextIndex < topics.length) {
+      setUnlockingIndex(nextIndex);
+      window.setTimeout(() => {
+        setUnlockingIndex(null);
+        requestAnimationFrame(() => scrollToId(`topic-${topics[nextIndex].id}`));
+      }, 850);
+    }
+  };
   const jump = (index: number) => { if (index > 0 && !completed[index - 1]) return; scrollToId(`topic-${topics[index].id}`); };
-  const reset = () => { setLevel(null); setActive(0); setCompleted(Array(15).fill(false)); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const reset = () => { setLevel(null); setActive(0); setCompleted(Array(15).fill(false)); setUnlockingIndex(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   return <div className="app">
     <AnimatePresence mode="wait">
       {!level ? <LevelPicker key="picker" onPick={choose} theme={theme} scale={scale} onTheme={setTheme} onScale={setScale}/> : <motion.div key="course" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <header className="course-bar"><button onClick={reset} className="course-brand">PYTHON // THE JOURNEY</button><div className="course-mode"><span>{levelInfo[level].badge}</span>{levelInfo[level].title}</div><div className="bar-actions"><ThemeDock theme={theme} scale={scale} onTheme={setTheme} onScale={setScale}/><button onClick={reset} className="switch-btn"><RotateCcw size={14}/> Switch level</button></div></header>
+        <ThemeDock theme={theme} scale={scale} onTheme={setTheme} onScale={setScale}/><header className="course-bar"><button onClick={reset} className="course-brand">PYTHON // THE JOURNEY</button><div className="course-mode"><span>{levelInfo[level].badge}</span>{levelInfo[level].title}</div><div className="bar-actions"><button onClick={reset} className="switch-btn"><RotateCcw size={14}/> Switch level</button></div></header>
         <ProgressRail topics={topics} active={active} completed={completed} onJump={jump}/>
         <div className="scroll-line"><motion.div animate={{ scaleX: (active + 1) / topics.length }} /></div>
-        <main>{topics.map((topic, i) => <TopicSection key={topic.id} topic={topic} index={i} level={level} unlocked={i === 0 || completed[i - 1]} completed={completed[i]} onComplete={() => completeTopic(i)} onNext={() => i < topics.length - 1 && jump(i + 1)}/>)}<Completion level={level} onRestart={() => jump(0)} onSwitch={reset}/></main>
+        <main>{topics.map((topic, i) => <TopicSection key={topic.id} topic={topic} index={i} level={level} unlocked={i === 0 || completed[i - 1]} completed={completed[i]} justUnlocked={unlockingIndex === i} onComplete={() => completeTopic(i)} onNext={() => i < topics.length - 1 && jump(i + 1)}/>)}<Completion level={level} onRestart={() => jump(0)} onSwitch={reset}/></main>
         <div className="mobile-progress">{String(active + 1).padStart(2, '0')} / {topics.length} • {completed.filter(Boolean).length} complete</div>
       </motion.div>}
     </AnimatePresence>
