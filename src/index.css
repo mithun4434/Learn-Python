@@ -86,3 +86,29 @@
   .topic-unlocked, .activity-done { animation:none; }
   .level-card, .visual-stage, .source-card, .code-card, .activity, .theme-choice { transition:none; }
 }
+
+
+/* PyLogic interaction layer */
+.visual-stage{position:relative;overflow:hidden;isolation:isolate;will-change:transform;cursor:default}
+.visual-stage::before,.visual-stage::after{content:"";position:absolute;pointer-events:none;border-radius:50%;filter:blur(1px);opacity:.32;z-index:-1}
+.visual-stage::before{width:180px;height:180px;right:-70px;top:-80px;background:radial-gradient(circle,rgba(43,108,176,.24),transparent 68%);animation:pylogicFloat 6s ease-in-out infinite}
+.visual-stage::after{width:140px;height:140px;left:-50px;bottom:-70px;background:radial-gradient(circle,rgba(215,166,0,.18),transparent 68%);animation:pylogicFloat 7s ease-in-out infinite reverse}
+.type-map div,.operator-wall span,.list-row span,.string-ops button,.file-node,.tuple-pill,.set-result span,.dict-methods,.fn-box,.call-box,.return-box,.module-visual>div,.regex-pattern,.regex-target{cursor:pointer;will-change:transform;}
+.type-map div:hover,.operator-wall span:hover,.list-row span:hover,.string-ops button:hover,.file-node:hover,.tuple-pill:hover,.set-result span:hover,.dict-methods:hover,.fn-box:hover,.call-box:hover,.return-box:hover,.module-visual>div:hover,.regex-pattern:hover,.regex-target:hover{animation:pylogicHover .42s cubic-bezier(.2,.8,.2,1)}
+.level-card{position:relative;overflow:hidden;will-change:transform}
+.level-card::after{content:"";position:absolute;inset:-30% -60%;background:linear-gradient(110deg,transparent 42%,rgba(255,255,255,.22) 50%,transparent 58%);transform:translateX(-60%) rotate(8deg);transition:transform .65s ease;pointer-events:none}
+.level-card:hover::after{transform:translateX(60%) rotate(8deg)}
+.mcq-options{display:grid;gap:8px;margin-top:12px}
+.mcq-option{width:100%;text-align:left;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font:10px/1.45 'DM Mono';cursor:pointer;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease}
+.mcq-option:hover{border-color:var(--blue);box-shadow:0 10px 24px rgba(43,108,176,.12)}
+.mcq-option.selected{border-color:var(--blue);background:#eef5fb;transform:translateX(5px)}
+.mcq-option.correct{border-color:#4b9b62;background:#effaf2;box-shadow:0 0 0 2px rgba(75,155,98,.1)}
+.mcq-option:disabled{opacity:.75;cursor:default}
+.task-progress{height:4px;background:var(--line);border-radius:999px;overflow:hidden;margin:8px 0 12px}
+.task-progress span{display:block;height:100%;background:linear-gradient(90deg,var(--blue),#d7a600);border-radius:inherit;transition:width .45s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 14px rgba(43,108,176,.22)}
+.activity-done{position:relative;overflow:hidden}
+.activity-done::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(120,166,210,.12),transparent);transform:translateX(-100%);animation:unlockSweep 1s ease .05s both}
+@keyframes pylogicFloat{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(0,12px,0) scale(1.06)}}
+@keyframes pylogicHover{0%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.035)}100%{transform:translateY(-4px) scale(1.025)}}
+@keyframes unlockSweep{to{transform:translateX(100%)}}
+@media(prefers-reduced-motion:reduce){.visual-stage::before,.visual-stage::after,.level-card::after,.type-map div:hover,.operator-wall span:hover,.list-row span:hover,.string-ops button:hover,.file-node:hover,.tuple-pill:hover,.set-result span:hover,.dict-methods:hover,.fn-box:hover,.call-box:hover,.return-box:hover,.module-visual>div:hover,.regex-pattern:hover,.regex-target:hover,.activity-done::after{animation:none!important;transition:none!important}}

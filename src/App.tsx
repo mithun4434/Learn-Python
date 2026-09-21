@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronDown, Code2, Lock, Palette, RotateCcw, Sparkles, X } from 'lucide-react';
-import { levelInfo, topicsByLevel, type Level, type Topic } from './data/course';
+import { levelInfo, topicsByLevel, type Activity, type Level, type Topic } from './data/course';
 
 const levelOrder: Level[] = ['beginner', 'intermediate', 'pro'];
 
@@ -72,7 +72,7 @@ function LevelPicker({ onPick }: { onPick: (level: Level) => void }) {
     <section className="landing" id="top">
       <div className="landing-grid" />
       <div className="landing-shell">
-        <div className="brandline"><span>PYTHON // THE JOURNEY</span><span>R-19 COURSE MAP • 6 UNITS</span></div>
+        <div className="brandline"><span>PyLogic</span><span>15 TOPICS • 5 TASKS EACH</span></div>
         <div className="landing-copy">
           <p className="kicker"><Sparkles size={14}/> SOURCE-LED LEARNING</p>
           <h1>Python.<br /><span>Understand it.</span><br />Build it.</h1>
@@ -101,7 +101,7 @@ function LevelPicker({ onPick }: { onPick: (level: Level) => void }) {
           })}
         </div>
 
-        <div className="landing-foot"><span>Every lesson ends with a coding activity.</span><span>15 master topics × 3 levels</span><ArrowDown size={16}/></div>
+        <div className="landing-foot"><span>Every lesson ends with a coding activity.</span><span>15 topics • 5 tasks per topic</span><ArrowDown size={16}/></div>
       </div>
     </section>
   );
@@ -131,40 +131,80 @@ function VisualStage({ topic, level }: { topic: Topic; level: Level }) {
     return <div className="regex-visual"><div className="regex-pattern">\\d+</div><div className="regex-target">IDs: 120, 305, 991</div><div className="regex-matches"><span>120</span><span>305</span><span>991</span></div><div className="regex-api">match • fullmatch • search • findall • finditer</div></div>;
   };
 
-  return <motion.div className="visual-stage" whileHover={{ y: -3, boxShadow: '0 18px 40px rgba(46,38,25,.10)' }} transition={{ duration: .2 }}><div className="visual-label">INTERACTIVE MAP <span style={{color:accent}}>●</span></div>{renderVisual()}</div>;
+  return <motion.div className="visual-stage" whileHover={{ y: -3, boxShadow: '0 18px 40px rgba(46,38,25,.10)' }} transition={{ duration: .2 }}><div className="visual-label">INTERACTIVE MAP <span style={{color:accent}}>●</span></div>{renderVisual()}</motion.div>;
 }
 
 function ActivityGate({ topic, level, complete, onComplete }: {topic:Topic; level:Level; complete:boolean; onComplete:()=>void}) {
-  const [code, setCode] = useState(topic.activity.starter);
+  const tasks = topic.activity.tasks ?? [topic.activity];
+  const [index, setIndex] = useState(0);
+  const [code, setCode] = useState('');
+  const [choice, setChoice] = useState<number | null>(null);
+  const [passed, setPassed] = useState<boolean[]>(() => tasks.map(() => complete));
   const [status, setStatus] = useState<'idle'|'error'|'success'>('idle');
   const [showHint, setShowHint] = useState(false);
+  const task = tasks[index];
+  const isMcq = task.kind === 'mcq';
 
-  useEffect(()=>{ setCode(topic.activity.starter); setStatus('idle'); setShowHint(false); },[topic.id]);
+  useEffect(() => {
+    setIndex(0);
+    setCode(taskFor(topic, 0, tasks));
+    setChoice(null);
+    setPassed(tasks.map(() => complete));
+    setStatus(complete ? 'success' : 'idle');
+    setShowHint(false);
+  }, [topic.id]);
+
+  useEffect(() => {
+    const current = tasks[index];
+    setCode(current?.starter || '');
+    setChoice(null);
+    setStatus(passed[index] ? 'success' : 'idle');
+    setShowHint(false);
+  }, [index]);
+
+  const finishIfReady = (nextPassed: boolean[]) => {
+    if (nextPassed.every(Boolean)) onComplete();
+  };
 
   const check = () => {
-    if (validate(code, topic.activity.required)) {
-      setStatus('success');
-      onComplete();
-    } else setStatus('error');
+    let ok = false;
+    if (isMcq) ok = choice === task.answer;
+    else ok = validate(code, task.required);
+    if (!ok) { setStatus('error'); return; }
+    const nextPassed = [...passed];
+    nextPassed[index] = true;
+    setPassed(nextPassed);
+    setStatus('success');
+    finishIfReady(nextPassed);
+    if (index < tasks.length - 1) {
+      window.setTimeout(() => setIndex(i => i + 1), 420);
+    }
   };
 
   return (
-    <div className={`activity ${complete ? 'activity-done' : ''}`}>
+    <motion.div className={`activity ${complete ? 'activity-done' : ''}`} animate={status==='success' ? {scale:[1,1.015,1]} : {scale:1}} transition={{duration:.38}}>
       <div className="activity-head">
-        <div><span className="activity-kicker">CODING CHECKPOINT</span><h3>{topic.activity.task}</h3></div>
+        <div><span className="activity-kicker">5 TASK CHECKPOINT • TASK {index + 1} / {tasks.length}</span><h3>{task.task}</h3></div>
         <span className="gate-pill">{complete ? <><Check size={13}/> COMPLETE</> : <><Lock size={13}/> GATE</>}</span>
       </div>
-      <textarea spellCheck={false} value={code} onChange={e=>{setCode(e.target.value); setStatus('idle')}} aria-label={`Coding activity for ${topic.title}`} />
+      <div className="task-progress"><span style={{width:`${(passed.filter(Boolean).length / tasks.length) * 100}%`}} /></div>
+      {isMcq ? (
+        <div className="mcq-options">{(task.options || []).map((option, i) => <motion.button key={option} className={`mcq-option ${choice===i?'selected':''} ${passed[index] && i===task.answer?'correct':''}`} onClick={()=>!passed[index] && setChoice(i)} whileHover={{x:5, scale:1.01}} whileTap={{scale:.98}}>{String.fromCharCode(65+i)}. {option}</motion.button>)}</div>
+      ) : (
+        <textarea spellCheck={false} value={code} onChange={e=>{setCode(e.target.value); setStatus('idle')}} aria-label={`Coding activity for ${topic.title}`} />
+      )}
       <div className="activity-actions">
-        <button className="check-btn" onClick={check}><Code2 size={15}/> Check solution</button>
+        <button className="check-btn" onClick={check} disabled={passed[index]}><Code2 size={15}/> {isMcq ? 'Check answer' : 'Check code'}</button>
         <button className="hint-btn" onClick={()=>setShowHint(v=>!v)}>{showHint ? 'Hide hint' : 'Show hint'}</button>
       </div>
-      {showHint && <div className="hint"><span>Hint</span>{topic.activity.hint}</div>}
-      {status==='error' && <div className="activity-feedback error">Not yet. Your code needs the key concepts listed in the task. Use the hint, revise, then check again.</div>}
-      {status==='success' && <div className="activity-feedback success"><Check size={15}/> Activity completed. The next lesson is now unlocked.</div>}
-    </div>
+      {showHint && <div className="hint"><span>Hint</span>{task.hint}</div>}
+      {status==='error' && <div className="activity-feedback error">Not yet. Try again — this task is specific to {topic.title} and must be completed before the next task unlocks.</div>}
+      {status==='success' && <motion.div className="activity-feedback success" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}}><Check size={15}/> Task {index+1} complete. {index < tasks.length-1 ? 'Next task unlocked.' : 'All five tasks complete — next topic unlocked.'}</motion.div>}
+    </motion.div>
   );
 }
+
+function taskFor(topic: Topic, index: number, tasks: Activity[]) { return tasks[index]?.starter || ''; }
 
 function TopicSection({ topic, index, level, unlocked, completed, onComplete, onNext }: {topic:Topic; index:number; level:Level; unlocked:boolean; completed:boolean; onComplete:()=>void; onNext:()=>void}) {
   return (
@@ -200,16 +240,16 @@ function App() {
   const [level,setLevel]=useState<Level|null>(null);
   const [active,setActive]=useState(0);
   const [completed,setCompleted]=useState<boolean[]>(Array(15).fill(false));
-  const [theme,setTheme]=useState<ThemeName>(() => (localStorage.getItem('python-journey-theme') as ThemeName) || 'paper');
-  const [scale,setScale]=useState(() => Number(localStorage.getItem('python-journey-scale') || '1'));
+  const [theme,setTheme]=useState<ThemeName>(() => (localStorage.getItem('pylogic-theme') as ThemeName) || 'paper');
+  const [scale,setScale]=useState(() => Number(localStorage.getItem('pylogic-scale') || '1'));
 
-  useEffect(()=>{ applyTheme(theme, scale); localStorage.setItem('python-journey-theme', theme); localStorage.setItem('python-journey-scale', String(scale)); },[theme,scale]);
+  useEffect(()=>{ applyTheme(theme, scale); localStorage.setItem('pylogic-theme', theme); localStorage.setItem('pylogic-scale', String(scale)); },[theme,scale]);
 
   const topics = useMemo(()=>level ? topicsByLevel[level] : [], [level]);
 
   useEffect(()=>{
     if(!level) return;
-    const key=`python-journey-progress-${level}`;
+    const key=`pylogic-progress-v3-${level}`;
     const stored=localStorage.getItem(key);
     if(stored){ try { const parsed=JSON.parse(stored); if(Array.isArray(parsed) && parsed.length===15) setCompleted(parsed); } catch {} }
     else setCompleted(Array(15).fill(false));
@@ -232,7 +272,7 @@ function App() {
   };
 
   const completeTopic=(i:number)=>{
-    setCompleted(prev=>{const next=[...prev];next[i]=true; if(level) localStorage.setItem(`python-journey-progress-${level}`,JSON.stringify(next)); return next;});
+    setCompleted(prev=>{const next=[...prev];next[i]=true; if(level) localStorage.setItem(`pylogic-progress-v3-${level}`,JSON.stringify(next)); return next;});
   };
 
   const jump=(index:number)=>{
@@ -246,10 +286,10 @@ function App() {
     <ThemeDock theme={theme} scale={scale} onTheme={setTheme} onScale={setScale}/>
     <AnimatePresence mode="wait">
       {!level ? <LevelPicker key="picker" onPick={choose}/> : <motion.div key="course" initial={{opacity:0}} animate={{opacity:1}}>
-        <header className="course-bar"><button onClick={reset} className="course-brand">PYTHON // THE JOURNEY</button><div className="course-mode"><span>{levelInfo[level].badge}</span>{levelInfo[level].title}</div><button onClick={reset} className="switch-btn"><RotateCcw size={14}/> Switch level</button></header>
+        <header className="course-bar"><button onClick={reset} className="course-brand">PyLogic</button><div className="course-mode"><span>{levelInfo[level].badge}</span>{levelInfo[level].title}</div><button onClick={reset} className="switch-btn"><RotateCcw size={14}/> Switch level</button></header>
         <ProgressRail topics={topics} active={active} completed={completed} level={level} onJump={jump}/>
         <main>
-          {topics.map((topic,i)=><TopicSection key={topic.id} topic={topic} index={i} level={level} unlocked={i===0 || completed[i-1]} completed={completed[i]} onComplete={()=>completeTopic(i)} onNext={()=>i<topics.length-1 && jump(i+1)}/>)}
+          {topics.map((topic,i)=><TopicSection key={topic.id} topic={topic} index={i} level={level} unlocked={i===0 || completed[i-1]} completed={completed[i]} onComplete={()=>completeTopic(i)} onNext={()=>{if(i<topics.length-1) jump(i+1)}}/>)}
           <section className="completion-screen"><div className="completion-card"><div className="completion-overline">PATH COMPLETE</div><h2>You finished<br/><span>{levelInfo[level].title}</span></h2><p>All 15 master topics in this path are complete. The next level is waiting whenever you are ready.</p><div className="complete-actions"><button onClick={()=>jump(0)} className="primary"><ArrowLeft size={16}/> Review from start</button><button onClick={reset} className="secondary">Choose another level <ChevronDown size={16}/></button></div></div></section>
         </main>
         <div className="mobile-progress">{active+1} / {topics.length} • {completed.filter(Boolean).length} complete</div>

@@ -6,6 +6,10 @@ export type Activity = {
   required: string[];
   hint: string;
   preview?: string;
+  kind?: 'coding' | 'mcq';
+  options?: string[];
+  answer?: number;
+  tasks?: Activity[];
 };
 
 export type Topic = {
@@ -31,16 +35,16 @@ export const levelInfo: Record<Level, {title:string; badge:string; summary:strin
     promise: 'Short explanations, direct examples and one small coding checkpoint before every next lesson.'
   },
   intermediate: {
-    title: 'Python for Intermediate',
+    title: 'Python Data Structures',
     badge: 'GO DEEPER',
-    summary: 'Revisit the same course map with denser examples, stronger combinations and practical reasoning.',
-    promise: 'Every topic becomes a small problem: combine syntax, data structures and reusable code.'
+    summary: 'Move beyond Python basics into data structures, algorithms and problem-solving patterns.',
+    promise: 'No beginner repetition: every lesson introduces a new data-structure or algorithmic idea.'
   },
   pro: {
-    title: 'Python for Pro',
+    title: 'Python Professional',
     badge: 'MASTER THE CORE',
-    summary: 'Work through the full course material as a systems-minded programmer: edge cases, composition and robust solutions.',
-    promise: 'The activity is the gate: read the source, reason about it, then implement before moving on.'
+    summary: 'Build production-grade Python skills: data model, architecture, concurrency, performance, APIs and security.',
+    promise: 'No intermediate repetition: each lesson focuses on professional Python engineering.'
   }
 };
 
@@ -206,8 +210,210 @@ const levelDetails: Record<Level, Array<{explain:string; code:string; activity:A
   ]
 };
 
+const makeBeginnerTasks = (topic: Omit<Topic, 'id'|'number'|'levelExplanation'|'code'|'activity'>, activity: Activity): Activity[] => {
+  const c = topic.coverage.slice(0, 5);
+  const correct = c[0] || topic.title;
+  const alt1 = c[1] || 'syntax';
+  const alt2 = c[2] || 'runtime';
+  const alt3 = c[3] || 'output';
+  return [
+    mcq(`Which concept is directly covered by the ${topic.title} lesson?`, [correct, alt1, alt2, 'machine code'], 0, `Look at the topic coverage: ${correct} is one of its core ideas.`),
+    mcq(`Which item is most closely related to ${topic.title}?`, [alt2, alt3, correct, 'HTML markup'], 2, `Choose the concept listed in this lesson's coverage.`),
+    mcq(`What should you practice first in ${topic.title}?`, [correct, 'GPU programming', 'assembly language', 'CSS selectors'], 0, `The first coverage item is ${correct}.`),
+    codeTask(activity.task, activity.starter, activity.required, activity.hint),
+    codeTask(`Create a second small ${topic.title} example using the same core idea.`, activity.starter, activity.required.slice(0, Math.max(1, Math.min(2, activity.required.length))), `Use the same core Python feature, but make your example different from the first checkpoint.`)
+  ];
+};
+
+const mcq = (task:string, options:string[], answer:number, hint:string): Activity => ({task, starter:'', required:[], hint, kind:'mcq', options, answer});
+const codeTask = (task:string, starter:string, required:string[] | string, hint:string): Activity => ({task, starter, required:Array.isArray(required) ? required : [required], hint, kind:'coding'});
+const packTasks = (a: Activity, b: Activity, c: Activity, d: Activity, e: Activity): Activity => ({...d, tasks:[a,b,c,d,e]});
+
+const advancedBase = (unit:string, title:string, subtitle:string, syllabus:string, sourceText:string, coverage:string[], explain:string, code:string, tasks:Activity[]): Topic => ({
+  id:'', unit, number:'00', title, subtitle, syllabus, sourceLabel: unit + ' • ' + title, sourceText, levelExplanation: explain, code, coverage,
+  activity:{...tasks[3], tasks}
+});
+
+const intermediateTopics: Topic[] = [
+  advancedBase('DATA STRUCTURES','Complexity & Big-O','Time • Space • Trade-offs','Analyze algorithmic time and space complexity.',
+    'A data structure choice affects how quickly operations can be performed. Compare operations by how their running time grows as input size increases.',
+    ['Big-O','time complexity','space complexity','trade-offs'], 'Move beyond syntax: choose a structure by the cost of its operations, not just by how easy it looks.',
+    'def contains(values, target):\n    for value in values:\n        if value == target:\n            return True\n    return False', [
+      mcq('Which notation describes constant-time growth?', ['O(1)','O(n)','O(n²)','O(log n)'],0,'The operation does not grow with input size.'),
+      mcq('A single loop over n items is usually:', ['O(1)','O(n)','O(log n)','O(n²)'],1,'Count how many times the loop can run.'),
+      mcq('Space complexity measures:', ['Only CPU speed','Extra memory growth','Number of functions','Code length'],1,'Think about memory used as input grows.'),
+      codeTask('Write a linear search that returns True when target exists and False otherwise.','def contains(values, target):\n    # write the search\n','return','Use a loop and return a Boolean.'),
+      codeTask('Write a function that scans a list once and counts how many values are greater than a threshold.','def count_greater(values, threshold):\n    count = 0\n','for ','count += 1')
+    ]),
+  advancedBase('DATA STRUCTURES','Arrays & Dynamic Arrays','Indexing • Updates • Resizing','Understand contiguous sequence access and dynamic-array behavior.',
+    'Array-style structures provide indexed access. Dynamic arrays grow by allocating more capacity and moving elements when required.',
+    ['index access','append','insert','delete','resizing'], 'Think in terms of indexed access and the cost of inserting or removing elements.',
+    'values = [10, 20, 30]\nvalues.append(40)\nprint(values[2])', [
+      mcq('Indexed access in an array is typically:', ['O(1)','O(n)','O(n²)','O(log n)'],0,'An index directly identifies a position.'),
+      mcq('Appending to a dynamic array is amortized:', ['O(n²)','O(n)','O(1)','O(log n)'],2,'Most appends do not require moving every element.'),
+      mcq('Inserting at the beginning can require:', ['No work','Shifting elements','Sorting','Hashing'],1,'Existing elements may need new positions.'),
+      codeTask('Append three values and print the element at index 1.','values = []\n','append(','values[1]'),
+      codeTask('Create a list and insert a value at the beginning, then print the result.','values = [20, 30]\n','insert(0','print(')
+    ]),
+  advancedBase('DATA STRUCTURES','Linked Lists','Nodes • Links • Traversal','Model a sequence using nodes connected by references.',
+    'A linked list stores data in nodes. Each node keeps a reference to another node, allowing traversal without requiring contiguous storage.',
+    ['node','next','head','traversal','insertion'], 'A linked list is about relationships between nodes rather than numeric indexes.',
+    'class Node:\n    def __init__(self, value):\n        self.value = value\n        self.next = None', [
+      mcq('A linked-list node commonly stores:', ['Only an index','Value and next reference','Only a key','A file handle'],1,'Nodes connect to other nodes.'),
+      mcq('The first node is commonly called:', ['root','head','tailer','bucket'],1,'It is the entry point of the list.'),
+      mcq('Traversal means:', ['Deleting all nodes','Visiting nodes in sequence','Sorting nodes','Hashing nodes'],1,'Follow the links one by one.'),
+      codeTask('Create a Node class with value and next attributes.','class Node:\n    def __init__(self, value):\n        ','self.value','self.next'),
+      codeTask('Traverse a linked list and print each node value.','current = head\nwhile current:\n    ','print(','current = current.next')
+    ]),
+  advancedBase('DATA STRUCTURES','Stack','LIFO • Push • Pop • Peek','Use last-in-first-out behavior for nested work and undo operations.',
+    'A stack removes the most recently added item first. Push adds an item and pop removes the top item.',
+    ['LIFO','push','pop','peek','call stack'], 'Stacks are useful when the newest pending item must be handled first.',
+    'stack = []\nstack.append("A")\nstack.append("B")\nprint(stack.pop())', [
+      mcq('Stack order is:', ['FIFO','LIFO','Random','Priority'],1,'The latest item leaves first.'),
+      mcq('Which list operation behaves like stack push?', ['append()','sort()','remove()','extend()'],0,'Add at the end.'),
+      mcq('Which operation removes the top item?', ['peek','pop','push','scan'],1,'It returns and removes the latest item.'),
+      codeTask('Implement push and pop using a Python list.','stack = []\n','append(','pop('),
+      codeTask('Use a stack to reverse a short sequence.','items = ["a", "b", "c"]\nstack = []\n','append(','pop(')
+    ]),
+  advancedBase('DATA STRUCTURES','Queue & Deque','FIFO • Front • Rear','Model first-in-first-out processing and double-ended queues.',
+    'A queue processes items in first-in-first-out order. A deque supports efficient insertion and removal at both ends.',
+    ['FIFO','front','rear','deque','enqueue','dequeue'], 'Queues are useful for scheduling work in arrival order.',
+    'from collections import deque\nq = deque(["A", "B"])\nq.append("C")\nprint(q.popleft())', [
+      mcq('Queue order is:', ['LIFO','FIFO','Priority','Reverse'],1,'The earliest item leaves first.'),
+      mcq('Which deque method removes from the left?', ['pop','popleft','remove','leftpop'],1,'The method name explicitly names the left side.'),
+      mcq('A queue is useful for:', ['Arrival-order processing','Random access','Hashing','Compilation'],0,'Think of tasks waiting in line.'),
+      codeTask('Create a deque, add two values, and remove the leftmost value.','from collections import deque\nq = deque()\n','append(','popleft('),
+      codeTask('Process three queued tasks until the queue is empty.','from collections import deque\nq = deque(["A","B","C"])\nwhile q:\n    ','popleft(','print(')
+    ]),
+  advancedBase('DATA STRUCTURES','Hash Tables','Keys • Hashing • Collisions','Understand key-based lookup and collision handling.',
+    'A hash table maps keys to locations using a hash function. Collisions require a strategy so different keys can coexist.',
+    ['hash','key','bucket','collision','lookup'], 'The key idea is fast average lookup by transforming a key into a location.',
+    'scores = {"Ada": 95, "Linus": 98}\nprint(scores["Ada"])', [
+      mcq('A hash function maps a key to:', ['A memory location or bucket index','A sorted list','A loop count','A class name'],0,'It helps locate the stored value.'),
+      mcq('A collision occurs when:', ['Two keys map to the same location','A key is deleted','A list is sorted','A loop ends'],0,'Different keys can produce the same bucket.'),
+      mcq('Python dictionaries are based on:', ['Hash-table style lookup','Linked-list-only lookup','Binary search only','Stacks'],0,'Dictionary keys are hashed.'),
+      codeTask('Build a dictionary mapping names to scores and retrieve one value by key.','scores = {}\n','["Ada"]','print('),
+      codeTask('Count word frequencies using a dictionary.','counts = {}\nwords = ["py", "py", "code"]\n','counts.get(','counts[word]')
+    ]),
+  advancedBase('DATA STRUCTURES','Heap & Priority Queue','Min-Heap • Max-Heap • Priority','Use heaps when the next item must be the smallest or highest-priority item.',
+    'A heap maintains a partial ordering that makes the smallest item readily available in a min-heap. Python provides heapq for heap operations.',
+    ['heap','heapq','heappush','heappop','priority'], 'A priority queue answers a different question from a normal queue: which item has the next priority?',
+    'import heapq\nh = []\nheapq.heappush(h, 30)\nheapq.heappush(h, 10)\nprint(heapq.heappop(h))', [
+      mcq('A min-heap exposes the:', ['Largest item','Smallest item','Newest item','Oldest item'],1,'The root is the minimum.'),
+      mcq('Python heap operations are provided by:', ['heapq','queuex','heaplib','priority'],0,'It is a standard-library module.'),
+      mcq('A priority queue removes based on:', ['Arrival only','Priority','Alphabetical order','Memory address'],1,'Priority determines the next item.'),
+      codeTask('Push three numbers into a heap and pop the smallest.','import heapq\nh = []\n','heappush(','heappop('),
+      codeTask('Use a heap as a simple priority queue of tuples.','import heapq\nq = []\n','heappush(q,','heappop(q)')
+    ]),
+  advancedBase('DATA STRUCTURES','Binary Search','Sorted Data • Halving • Bounds','Search sorted data by repeatedly reducing the search interval.',
+    'Binary search works on sorted data and compares the target with the middle element, discarding half of the remaining range each step.',
+    ['sorted input','midpoint','left','right','O(log n)'], 'The important requirement is sorted input. Each comparison removes roughly half the remaining candidates.',
+    'def binary_search(a, target):\n    lo, hi = 0, len(a) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if a[mid] == target: return mid', [
+      mcq('Binary search requires:', ['Unsorted data','Sorted data','A stack','A hash table'],1,'The algorithm relies on ordering.'),
+      mcq('Each step removes roughly:', ['One item','Half the range','All items','Two ranges'],1,'The midpoint divides the search interval.'),
+      mcq('Typical binary-search time is:', ['O(n)','O(log n)','O(n²)','O(1)'],1,'The range halves each step.'),
+      codeTask('Implement binary search returning the index or -1.','def binary_search(a, target):\n    lo, hi = 0, len(a)-1\n    while lo <= hi:\n        ','mid =','return -1'),
+      codeTask('Use binary search to find 30 in a sorted list.','values = [10,20,30,40,50]\n','binary_search(','print(')
+    ]),
+  advancedBase('DATA STRUCTURES','Sorting','Selection • Insertion • Merge • Built-in Sort','Compare sorting strategies and use Python sorting safely.',
+    'Sorting rearranges values according to an ordering rule. Different algorithms trade simplicity, memory and running time.',
+    ['sort','sorted','key','stability','complexity'], 'Choose an algorithm based on input size and constraints, while using Python’s built-in sorting when appropriate.',
+    'values = [5, 2, 9, 1]\nprint(sorted(values))', [
+      mcq('sorted(values) returns:', ['A new sorted list','The original list only','A set','A tuple'],0,'sorted() returns a sorted list.'),
+      mcq('list.sort() primarily:', ['Sorts in place','Creates a tuple','Hashes values','Searches values'],0,'It mutates the list.'),
+      mcq('A key function is used to:', ['Choose the comparison value','Open a file','Create a thread','Allocate memory'],0,'key= controls what is compared.'),
+      codeTask('Sort a list in descending order using sorted().','values = [5, 2, 9, 1]\n','sorted(','reverse=True'),
+      codeTask('Sort records by their score using a key function.','records = [("A", 80), ("B", 95)]\n','key=lambda','sorted(')
+    ]),
+  advancedBase('DATA STRUCTURES','Trees','Root • Child • Leaf • Traversal','Represent hierarchical data using nodes and parent-child relationships.',
+    'A tree is a hierarchical structure with a root and connected child nodes. Leaves have no children.',
+    ['root','parent','child','leaf','depth','traversal'], 'Trees model hierarchy: file systems, syntax trees and many indexing structures are tree-shaped.',
+    'class TreeNode:\n    def __init__(self, value):\n        self.value = value\n        self.children = []', [
+      mcq('The top node of a tree is the:', ['root','leaf','bucket','tail'],0,'It is the starting node.'),
+      mcq('A node with no children is a:', ['root','leaf','parent','branch'],1,'It ends a path.'),
+      mcq('Tree depth measures:', ['Distance through levels','Number of files','Hash collisions','CPU speed'],0,'Depth is about levels from the root.'),
+      codeTask('Create a tree node with a value and a children list.','class TreeNode:\n    def __init__(self, value):\n        ','self.value','self.children'),
+      codeTask('Add two child nodes to a parent and iterate over them.','root = TreeNode("root")\n','append(','for child in')
+    ]),
+  advancedBase('DATA STRUCTURES','Binary Search Trees','Ordering • Left • Right','Use the BST ordering rule to place and find values.',
+    'In a binary search tree, values smaller than a node go left and larger values go right. This ordering can make search efficient when the tree is balanced.',
+    ['BST','left','right','insert','search'], 'The BST rule is the central idea: left values are smaller and right values are larger.',
+    'class Node:\n    def __init__(self, value):\n        self.value = value\n        self.left = None\n        self.right = None', [
+      mcq('In a BST, smaller values go:', ['Left','Right','Root only','Anywhere'],0,'Follow the ordering rule.'),
+      mcq('A balanced BST search can be close to:', ['O(log n)','O(n²)','O(1) always','O(n³)'],0,'Balanced height grows logarithmically.'),
+      mcq('A BST node commonly has:', ['left and right references','only a parent','a file pointer','a queue'],0,'Binary means up to two children.'),
+      codeTask('Create a BST node with left and right references.','class Node:\n    def __init__(self, value):\n        ','self.left = None','self.right = None'),
+      codeTask('Write the basic BST search comparison for a target.','if target < node.value:\n    ','node = node.left','else:' )
+    ]),
+  advancedBase('DATA STRUCTURES','Graphs','Vertices • Edges • Adjacency','Represent relationships between connected entities.',
+    'A graph consists of vertices and edges. Graphs can represent networks such as roads, social connections and dependencies.',
+    ['vertex','edge','directed','undirected','adjacency'], 'Graphs model relationships rather than strict hierarchy. One node can connect to many others.',
+    'graph = {\n    "A": ["B", "C"],\n    "B": ["A"]\n}', [
+      mcq('A graph is made of:', ['Vertices and edges','Rows and columns only','Stacks only','Functions only'],0,'Nodes are connected by edges.'),
+      mcq('A directed graph edge has:', ['A direction','No endpoints','Only one vertex','A priority'],0,'Think of A → B.'),
+      mcq('An adjacency list stores:', ['Neighbors of each vertex','Only sorted values','Only roots','Only weights'],0,'Each vertex maps to its neighbors.'),
+      codeTask('Represent a small graph using an adjacency dictionary.','graph = {\n','"A": [','"B": [') ,
+      codeTask('Add a new neighbor to a vertex in an adjacency list.','graph = {"A": ["B"]}\n','append(','graph["A"]')
+    ]),
+  advancedBase('DATA STRUCTURES','BFS & DFS','Traversal • Visited • Queue • Stack','Traverse graphs systematically using breadth-first or depth-first strategies.',
+    'Breadth-first search explores level by level using a queue. Depth-first search explores one branch deeply before backtracking.',
+    ['BFS','DFS','visited','queue','stack'], 'BFS is naturally queue-based; DFS can be implemented with recursion or an explicit stack.',
+    'from collections import deque\nqueue = deque(["A"])\nvisited = set()', [
+      mcq('BFS commonly uses a:', ['Queue','Heap','Dictionary only','Tuple'],0,'It processes the earliest discovered vertex first.'),
+      mcq('DFS can use:', ['A stack or recursion','Only a queue','Only a heap','Only sorting'],0,'Depth-first behavior needs stack-like control.'),
+      mcq('A visited set prevents:', ['Repeated traversal','Sorting','Input','Compilation'],0,'Track nodes already processed.'),
+      codeTask('Start a BFS with a deque and a visited set.','from collections import deque\nqueue = deque(["A"])\nvisited = {"A"}\n','popleft(','visited'),
+      codeTask('Implement a simple DFS function using recursion.','def dfs(graph, node, visited):\n    ','visited.add(','for neighbor in')
+    ]),
+  advancedBase('DATA STRUCTURES','Trie / Prefix Search','Characters • Prefix • Children','Use a prefix tree for fast word and prefix lookup.',
+    'A trie stores strings character by character. Shared prefixes share nodes, making prefix queries efficient.',
+    ['trie','prefix','children','word end','autocomplete'], 'Tries are useful when the query is about prefixes, such as autocomplete and dictionary lookup.',
+    'class TrieNode:\n    def __init__(self):\n        self.children = {}\n        self.end = False', [
+      mcq('A trie is especially useful for:', ['Prefix queries','Numeric sorting only','File compression only','Thread scheduling'],0,'Think autocomplete.'),
+      mcq('Trie edges commonly represent:', ['Characters','Threads','Files','Priorities'],0,'Each level represents part of a word.'),
+      mcq('A terminal flag can indicate:', ['A complete word ends here','A node is deleted','A hash collision','A queue is empty'],0,'A prefix can also be a complete word.'),
+      codeTask('Create a TrieNode with a children dictionary and end flag.','class TrieNode:\n    def __init__(self):\n        ','self.children = {}','self.end = False'),
+      codeTask('Insert the word "cat" character by character into a trie.','node = root\nfor ch in "cat":\n    ','setdefault(','node =')
+    ]),
+];
+
+const proTopics: Topic[] = [
+  advancedBase('PRO PYTHON','Python Data Model','Objects • Protocols • Identity','Understand Python through its object and protocol model.', 'Python behavior is driven by objects and protocols. Operators, iteration, calling and attribute access can be customized through special methods.', ['objects','protocols','identity','attributes'], 'Professional Python starts with the data model: understand what Python asks an object to provide.', 'class User:\n    def __repr__(self):\n        return "User()"', [
+    mcq('Python values are fundamentally:', ['Objects','Only primitives','Only records','Only functions'],0,'Python uses an object model.'), mcq('A protocol describes:', ['Expected behavior','A database schema only','A file format only','A compiler flag'],0,'Protocols are behavioral contracts.'), mcq('repr() is commonly used for:', ['Developer-facing representation','Sorting only','Networking only','Input parsing'],0,'It is useful for debugging and inspection.'), codeTask('Implement __repr__ for a class.','class User:\n    def __repr__(self):\n        ','return ','"User"'), codeTask('Implement __len__ so len(obj) works.','class Bag:\n    def __init__(self, items):\n        self.items = items\n    def __len__(self):\n        ','return len(','self.items')]),
+  advancedBase('PRO PYTHON','Object-Oriented Design','Classes • Composition • Inheritance','Design reusable objects with clear responsibilities.', 'Classes combine state and behavior. Composition builds larger objects from smaller ones; inheritance should model a genuine specialization.', ['class','composition','inheritance','encapsulation'], 'Prefer small responsibilities and composition when objects collaborate.', 'class Engine:\n    def start(self):\n        print("start")\n\nclass Car:\n    def __init__(self):\n        self.engine = Engine()', [
+    mcq('Composition means:', ['Building an object from collaborating objects','Copying code','Only inheriting','Sorting objects'],0,'A Car can contain an Engine.'), mcq('Inheritance should model:', ['A genuine is-a relationship','Every relationship','Database rows','File paths'],0,'Use it when specialization is real.'), mcq('Encapsulation mainly groups:', ['State and behavior','Only variables','Only functions','Only files'],0,'Objects manage their own state and operations.'), codeTask('Create a class that composes another object.','class Engine:\n    pass\n\nclass Car:\n    def __init__(self):\n        ','self.engine = Engine()','class Car'), codeTask('Create a base class and subclass that overrides a method.','class Animal:\n    def speak(self):\n        return "sound"\n\n','class Dog(Animal):','def speak')]),
+  advancedBase('PRO PYTHON','Dunder Methods','__init__ • __repr__ • __eq__ • Operators','Customize standard Python operations safely.', 'Special methods connect user-defined objects to Python syntax and built-in functions.', ['dunder','__init__','__repr__','__eq__','operator overloading'], 'Implement only the protocols your type actually needs, and keep their semantics unsurprising.', 'class Point:\n    def __init__(self, x, y):\n        self.x, self.y = x, y\n    def __eq__(self, other):\n        return (self.x, self.y) == (other.x, other.y)', [
+    mcq('__eq__ controls:', ['Equality comparison','Object construction','Iteration','Importing'],0,'It participates in ==.'), mcq('__repr__ is used by:', ['repr(obj)','len(obj)','iter(obj)','hashlib'],0,'It provides a representation.'), mcq('__init__ runs during:', ['Initialization','Garbage collection only','Sorting','Importing'],0,'It initializes a new instance.'), codeTask('Implement equality for a Point class.','class Point:\n    def __init__(self, x, y):\n        self.x, self.y = x, y\n    def __eq__(self, other):\n        ','return ','(other.x, other.y)'), codeTask('Implement a readable repr for a Point.','class Point:\n    def __repr__(self):\n        ','return f"Point(','self.x')]),
+  advancedBase('PRO PYTHON','Decorators','Functions • Wrapping • Metadata','Use decorators to add behavior without rewriting the wrapped function.', 'A decorator receives a function and returns a callable with additional behavior.', ['decorator','wrapper','@syntax','functools.wraps'], 'A good decorator preserves the wrapped function metadata and keeps the added behavior focused.', 'from functools import wraps\ndef log_call(fn):\n    @wraps(fn)\n    def wrapper(*args, **kwargs):\n        print(fn.__name__)\n        return fn(*args, **kwargs)\n    return wrapper', [
+    mcq('A decorator typically receives:', ['A callable','A file','A list only','A class name only'],0,'The wrapped target is callable.'), mcq('@name above a function means:', ['Apply a decorator','Call immediately','Import a module','Create a thread'],0,'It is decorator syntax.'), mcq('wraps helps preserve:', ['Function metadata','Database state','Thread priority','File contents'],0,'It copies useful metadata.'), codeTask('Write a decorator that prints before calling a function.','def announce(fn):\n    def wrapper(*args, **kwargs):\n        ','print(','return fn('), codeTask('Use functools.wraps in a decorator.','from functools import wraps\ndef deco(fn):\n    @wraps(fn)\n    def wrapper(*args, **kwargs):\n        ','@wraps(fn)','return wrapper')]),
+  advancedBase('PRO PYTHON','Iterators & Generators','iter • next • yield','Build lazy sequences that produce values on demand.', 'An iterator supplies values through __next__. A generator function uses yield to create an iterator automatically.', ['iterator','iter','next','generator','yield'], 'Lazy iteration can reduce memory use because values are produced only when requested.', 'def countdown(n):\n    while n:\n        yield n\n        n -= 1', [
+    mcq('yield creates:', ['A generator','A list immediately','A thread','A file'],0,'Generator functions pause and resume.'), mcq('next(iterator) requests:', ['The next value','The previous value','All values','The length'],0,'It advances the iterator.'), mcq('Lazy iteration can reduce:', ['Memory use','Syntax errors','Network latency always','CPU to zero'],0,'Values need not all exist at once.'), codeTask('Write a generator that yields 1, 2 and 3.','def values():\n    ','yield 1','yield 3'), codeTask('Consume a generator with next().','g = (x * x for x in range(3))\n','next(g)','print(')]),
+  advancedBase('PRO PYTHON','Context Managers','with • __enter__ • __exit__','Manage setup and cleanup reliably.', 'A context manager defines what happens when entering and leaving a with block, making cleanup deterministic for supported resources.', ['with','__enter__','__exit__','cleanup'], 'Use context managers whenever a resource has a clear acquisition and release lifecycle.', 'with open("data.txt") as f:\n    text = f.read()', [
+    mcq('The with statement is mainly about:', ['Resource management','Sorting','Hashing','Recursion'],0,'Think setup and cleanup.'), mcq('__enter__ runs when:', ['Entering the context','Leaving the context','Importing','Sorting'],0,'It is called at the start.'), mcq('__exit__ handles:', ['Context cleanup','List indexing','Compilation','Thread creation'],0,'It runs as the context exits.'), codeTask('Create a context manager class with __enter__ and __exit__.','class Resource:\n    def __enter__(self):\n        ','return self','def __exit__'), codeTask('Use with open() to read a file safely.','with open("data.txt") as f:\n    ','f.read(','print(')]),
+  advancedBase('PRO PYTHON','Type Hints & Protocols','Generics • Typed APIs • Contracts','Make interfaces explicit with modern typing.', 'Type hints document expected shapes and help tools analyze code before runtime.', ['typing','Generic','Protocol','Optional','Callable'], 'Typing is a design aid: it makes interfaces clearer without changing Python into a statically compiled language.', 'from typing import Protocol\nclass SupportsClose(Protocol):\n    def close(self) -> None: ...', [
+    mcq('Type hints primarily improve:', ['Clarity and tooling','Runtime speed always','Garbage collection','Network bandwidth'],0,'They describe expected types.'), mcq('Protocol describes:', ['Structural behavior','A database table','A file extension','A loop'],0,'Objects can satisfy a protocol by behavior.'), mcq('Callable describes:', ['Call signatures','File permissions','Thread locks','SQL rows'],0,'It represents callable types.'), codeTask('Annotate a function that takes two ints and returns an int.','def add(a: int, b: int) -> ','int','return a + b'), codeTask('Define a Protocol with a close method.','from typing import Protocol\nclass SupportsClose(Protocol):\n    ','def close(','-> None')]),
+  advancedBase('PRO PYTHON','Testing & Mocking','Unit Tests • Fixtures • Mocks','Verify behavior with focused automated tests.', 'Testing turns expected behavior into executable checks. Mocks isolate a unit from external dependencies.', ['unittest','pytest concepts','assert','mock','fixtures'], 'Tests should describe behavior and fail close to the cause.', 'def add(a, b):\n    return a + b\n\ndef test_add():\n    assert add(2, 3) == 5', [
+    mcq('A unit test checks:', ['A small behavior or unit','Only deployment','Only network speed','Only formatting'],0,'Keep tests focused.'), mcq('assert is used to:', ['Check an expectation','Open a file','Start a thread','Sort data'],0,'It fails when the condition is false.'), mcq('A mock is useful to:', ['Isolate dependencies','Replace Python itself','Compile code','Sort tests'],0,'Mocks stand in for external collaborators.'), codeTask('Write a test asserting add(2,3) equals 5.','def add(a, b):\n    return a + b\n\n','assert add(2, 3)','== 5'), codeTask('Create a simple fake dependency and assert it was called.','class Fake:\n    def __init__(self): self.called = False\n    def run(self):\n        ','self.called = True','assert fake.called')]),
+  advancedBase('PRO PYTHON','Packaging & Environments','venv • pip • pyproject','Keep dependencies and project boundaries reproducible.', 'Virtual environments isolate project dependencies. Packaging metadata describes how a project is built and installed.', ['venv','pip','dependencies','pyproject','package'], 'Professional projects should make installation reproducible instead of relying on global packages.', 'python -m venv .venv\npython -m pip install requests', [
+    mcq('A virtual environment isolates:', ['Project dependencies','The CPU','The keyboard','The browser'],0,'It separates Python packages.'), mcq('pip primarily manages:', ['Python packages','Git commits','SQL rows','Threads'],0,'It installs and manages packages.'), mcq('Project metadata can live in:', ['pyproject.toml','image.png','notes.txt','README only'],0,'Modern Python projects use pyproject.toml.'), codeTask('Create a virtual environment command and activate it conceptually.','python -m ','venv .venv','python -m venv'), codeTask('Write a pip command to install requests.','python -m pip ','install requests','pip')]),
+  advancedBase('PRO PYTHON','Profiling & Performance','Profile • Measure • Optimize','Optimize based on measurements rather than guesses.', 'Profiling identifies where a program spends time so optimization can target the real bottleneck.', ['profiling','cProfile','timeit','benchmark','hot path'], 'Measure first. Optimize the part that matters, then measure again.', 'import timeit\nprint(timeit.timeit("sum(range(100))", number=1000))', [
+    mcq('Profiling helps identify:', ['Bottlenecks','Syntax only','Usernames','File names'],0,'It measures where time is spent.'), mcq('timeit is useful for:', ['Micro-benchmarks','Database schema','GUI design','Packaging'],0,'It measures small code snippets.'), mcq('Optimization should begin with:', ['Measurement','Guessing','Rewriting everything','Adding threads'],0,'Find evidence first.'), codeTask('Benchmark a small expression with timeit.','import timeit\nprint(timeit.timeit(','number=','1000))'), codeTask('Profile a function with cProfile.','import cProfile\n','cProfile.run(','my_function()')]),
+  advancedBase('PRO PYTHON','Concurrency','Threads • Processes • Shared Work','Choose concurrency based on whether work is I/O-bound or CPU-bound.', 'Concurrency allows multiple tasks to make progress. Threads share memory; processes have separate memory spaces.', ['threading','multiprocessing','I/O-bound','CPU-bound'], 'The right concurrency model depends on the workload and the cost of shared state.', 'from concurrent.futures import ThreadPoolExecutor\nwith ThreadPoolExecutor() as ex:\n    results = list(ex.map(str, [1,2,3]))', [
+    mcq('Threads are often useful for:', ['I/O-bound work','Only CPU-bound work','Sorting only','Compilation only'],0,'Waiting on I/O can overlap.'), mcq('Processes have:', ['Separate memory spaces','One shared stack always','No interpreter','Only one function'],0,'Processes isolate address spaces.'), mcq('Concurrency means:', ['Tasks can make progress during overlapping execution','Everything is always parallel','Only one task exists','No scheduling'],0,'Overlap is the key idea.'), codeTask('Use ThreadPoolExecutor to map a function over values.','from concurrent.futures import ThreadPoolExecutor\nwith ThreadPoolExecutor() as ex:\n    ','ex.map(','list('), codeTask('Create a multiprocessing Process target.','from multiprocessing import Process\n','Process(target=','p.start()')]),
+  advancedBase('PRO PYTHON','Asyncio','async • await • Event Loop','Coordinate many I/O tasks without blocking the event loop.', 'asyncio uses cooperative scheduling. Coroutines pause at await points so other tasks can run.', ['async def','await','asyncio','event loop','Task'], 'Async code is useful when tasks spend time waiting and can yield control.', 'import asyncio\nasync def main():\n    await asyncio.sleep(0.1)\nasyncio.run(main())', [
+    mcq('A coroutine is defined with:', ['async def','thread def','await def','yield class'],0,'async def creates a coroutine function.'), mcq('await means:', ['Pause this coroutine until the awaited operation progresses','Stop Python forever','Create a process','Sort a list'],0,'It yields control to the event loop.'), mcq('asyncio is suited to:', ['Many I/O tasks','Only image editing','Only sorting','Only compilation'],0,'It shines when work spends time waiting.'), codeTask('Write and run a simple async function.','import asyncio\nasync def main():\n    ','await asyncio.sleep(','asyncio.run(main())'), codeTask('Run two coroutines concurrently with gather.','import asyncio\nasync def main():\n    await asyncio.','gather(','asyncio.run(main())')]),
+  advancedBase('PRO PYTHON','Memory & Garbage Collection','References • GC • Lifetimes','Reason about references and automatic memory management.', 'Python manages object lifetimes through reference tracking and garbage collection for cycles.', ['reference count','cycles','gc','lifetime'], 'Do not rely on manual freeing. Understand references so you can diagnose leaks and retained objects.', 'import gc\nprint(gc.isenabled())', [
+    mcq('An object can become collectible when:', ['No references keep it reachable','A loop starts','A list is sorted','A function is defined'],0,'Reachability matters.'), mcq('The gc module helps with:', ['Garbage collection','Networking','Sorting','Packaging'],0,'It exposes garbage-collector controls.'), mcq('Reference cycles can require:', ['Cycle detection','Binary search','A heap','Regex'],0,'Cycles are not solved by simple reference counting alone.'), codeTask('Import gc and check whether automatic collection is enabled.','import gc\n','gc.isenabled(','print('), codeTask('Inspect garbage collector counts.','import gc\n','gc.get_count(','print(')]),
+  advancedBase('PRO PYTHON','Databases','Connections • Queries • Transactions','Build safe database access boundaries.', 'Database code should separate connection handling, queries and transaction behavior. Parameterized queries prevent user input from becoming executable SQL.', ['DB-API','transactions','parameterized queries','connection'], 'Treat database access as a boundary: validate inputs, parameterize queries and close resources.', 'cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))', [
+    mcq('Parameterized queries help prevent:', ['SQL injection','Sorting errors','Memory leaks always','Thread starvation'],0,'User data should not become SQL syntax.'), mcq('A transaction groups:', ['Related database operations','Python imports','Loops','Threads'],0,'It provides a unit of database work.'), mcq('A database connection is a:', ['Resource that should be managed','List','Decorator','Regex'],0,'Connections need lifecycle management.'), codeTask('Write a parameterized SELECT query with a placeholder.','cursor.execute(','SELECT * FROM users WHERE id = ?','(user_id,)'), codeTask('Commit a successful transaction.','try:\n    cursor.execute("UPDATE users SET active = 1")\n    ','connection.commit()','except Exception')]),
+  advancedBase('PRO PYTHON','Networking & APIs','HTTP • JSON • Timeouts • Retries','Design reliable clients for external services.', 'Network calls fail in real systems. Clients need timeouts, error handling and clear data boundaries.', ['HTTP','JSON','timeout','retry','API'], 'Treat network calls as unreliable dependencies and make failure behavior explicit.', 'import requests\nr = requests.get("https://example.com", timeout=5)\nr.raise_for_status()', [
+    mcq('A timeout prevents:', ['Waiting forever on a network call','All HTTP errors','All retries','JSON parsing'],0,'Bound the waiting time.'), mcq('JSON is commonly used for:', ['Structured API data','Thread locks','Sorting','Compilation'],0,'APIs often exchange JSON.'), mcq('Retries should be:', ['Bounded and deliberate','Infinite','Random always','Disabled always'],0,'Retries can amplify failures if uncontrolled.'), codeTask('Make an HTTP request with a timeout and raise HTTP errors.','import requests\nr = requests.get("https://example.com", ','timeout=5','r.raise_for_status()'), codeTask('Parse a JSON response.','import json\ndata = json.loads(','response.text','print(data)')]),
+  advancedBase('PRO PYTHON','Security & Production','Secrets • Validation • Logging • Deployment','Build software that fails safely and can be operated.', 'Production code needs input validation, secret handling, logging and controlled deployment behavior.', ['validation','secrets','logging','least privilege','deployment'], 'Security is part of design: never trust input, never hard-code secrets, and make failures observable.', 'import os\nAPI_KEY = os.environ.get("API_KEY")\nif not API_KEY:\n    raise RuntimeError("Missing API key")', [
+    mcq('Secrets should usually be stored in:', ['Environment or secret manager','Source code','Public comments','CSS'],0,'Keep credentials outside the repository.'), mcq('Input validation protects:', ['Program boundaries','Only colors','Only sorting','Only imports'],0,'Treat external data as untrusted.'), mcq('Logging helps with:', ['Observability','Changing Python syntax','Sorting','Compilation'],0,'Logs explain what happened in production.'), codeTask('Read an API key from an environment variable and fail if missing.','import os\nAPI_KEY = os.environ.get("API_KEY")\n','if not API_KEY:','raise RuntimeError'), codeTask('Configure a basic logger and emit an info message.','import logging\nlogging.basicConfig(level=logging.INFO)\n','logging.info(','"service started"')]),
+];
+
 export const topicsByLevel: Record<Level, Topic[]> = {
-  beginner: baseTopics.map((t, i) => ({...t, id:`beginner-${i+1}`, number:String(i+1).padStart(2,'0'), levelExplanation:levelDetails.beginner[i].explain, code:levelDetails.beginner[i].code, activity:levelDetails.beginner[i].activity})),
-  intermediate: baseTopics.map((t, i) => ({...t, id:`intermediate-${i+1}`, number:String(i+1).padStart(2,'0'), levelExplanation:levelDetails.intermediate[i].explain, code:levelDetails.intermediate[i].code, activity:levelDetails.intermediate[i].activity})),
-  pro: baseTopics.map((t, i) => ({...t, id:`pro-${i+1}`, number:String(i+1).padStart(2,'0'), levelExplanation:levelDetails.pro[i].explain, code:levelDetails.pro[i].code, activity:levelDetails.pro[i].activity}))
+  beginner: baseTopics.map((t, i) => ({...t, id:`beginner-${i+1}`, number:String(i+1).padStart(2,'0'), levelExplanation:levelDetails.beginner[i].explain, code:levelDetails.beginner[i].code, activity:{...levelDetails.beginner[i].activity, tasks:makeBeginnerTasks(t, levelDetails.beginner[i].activity)}})),
+  intermediate: intermediateTopics.map((t, i) => ({...t, id:`intermediate-${i+1}`, number:String(i+1).padStart(2,'0')})),
+  pro: proTopics.map((t, i) => ({...t, id:`pro-${i+1}`, number:String(i+1).padStart(2,'0')}))
 };
