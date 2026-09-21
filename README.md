@@ -27,7 +27,7 @@ npm run preview
 - Text size applies to course material, code, activity editors and key UI text.
 - Appearance control is placed inside the home header flow instead of covering hero content.
 - Themes remain available without Tailwind/PostCSS.
-- The supplied `Python.pdf` is included in `public/` for project completeness, but there is no visible source-PDF button in the learning UI.
+- The supplied `the supplied course material` is included in `public/` for project completeness, but there is no visible source-course material button in the learning UI.
 ## Vercel deployment
 
 This project is configured so Vercel runs the Vite production build directly. TypeScript checking is available separately with `npm run typecheck`, so a TypeScript declaration-package issue cannot block the static Vite deployment. React and React DOM type packages are included for editor/typecheck support.
